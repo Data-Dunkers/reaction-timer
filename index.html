@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaction Timer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        #box {
+            width: 200px;
+            height: 200px;
+            background-color: #f0f0f0;
+            margin: 30px auto;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background-color 0.1s;
+            border-radius: 8px;
+        }
+        
+        #box.waiting {
+            background-color: #f0f0f0;
+        }
+        
+        #box.ready {
+            background-color: #00ff00;
+        }
+        
+        #box.clicked {
+            background-color: #ffcccc;
+        }
+        
+        button {
+            background-color: #007DB7;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #0069a0;
+        }
+        
+        #results {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        
+        #averageContainer {
+            display: none;
+            margin-top: 15px;
+            font-weight: bold;
+            height: 24px;
+        }
+        
+        #average {
+            color: #007DB7;
+        }
+        
+        #attempts {
+            margin-top: 10px;
+            text-align: left;
+            height: 108px; /* Height for 3 trials at 36px each */
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .trial-result {
+            height: 24px;
+            line-height: 24px;
+            margin: 6px 0;
+            visibility: hidden;
+        }
+        
+        .trial-result.visible {
+            visibility: visible;
+        }
+        
+        #trialCounter {
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reaction Timer</h1>
+        
+        <div id="trialCounter">Trial 0/3</div>
+        <div id="box">Click to start</div>
+        
+        <button id="resetButton">Reset</button>
+        
+        <div id="results">
+            <div id="attempts">
+                <div id="trial1" class="trial-result">Trial 1: </div>
+                <div id="trial2" class="trial-result">Trial 2: </div>
+                <div id="trial3" class="trial-result">Trial 3: </div>
+            </div>
+            <p id="averageContainer">Average reaction time: <span id="average">N/A</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Elements
+        const box = document.getElementById('box');
+        const resetButton = document.getElementById('resetButton');
+        const averageElement = document.getElementById('average');
+        const averageContainer = document.getElementById('averageContainer');
+        const attemptsElement = document.getElementById('attempts');
+        const trialCounterElement = document.getElementById('trialCounter');
+        const trialElements = [
+            document.getElementById('trial1'),
+            document.getElementById('trial2'),
+            document.getElementById('trial3')
+        ];
+        
+        // Variables
+        let timer = null;
+        let startTime = null;
+        let reactionTimes = [];
+        let isRunning = false;
+        let isWaiting = false;
+        const maxTrials = 3;
+        
+        // Initialize
+        box.textContent = "Click to start";
+        
+        // Start the test
+        function startTest() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            isWaiting = true;
+            box.className = "waiting";
+            box.textContent = "Wait for green";
+            
+            // Random delay between 1-5 seconds
+            const delay = Math.floor(Math.random() * 4000) + 1000;
+            
+            timer = setTimeout(() => {
+                startTime = Date.now();
+                box.className = "ready";
+                box.textContent = "CLICK NOW";
+                isWaiting = false;
+            }, delay);
+        }
+        
+        // Handle box click
+        box.addEventListener('click', function() {
+            if (!isRunning) {
+                if (reactionTimes.length >= maxTrials) {
+                    // Reset if we've completed all trials
+                    reactionTimes = [];
+                    updateResults();
+                }
+                startTest();
+                return;
+            }
+            
+            if (isWaiting) {
+                // Clicked too early
+                clearTimeout(timer);
+                box.className = "";
+                box.textContent = "Too early, try again";
+                isRunning = false;
+                return;
+            }
+            
+            // Valid click - calculate reaction time
+            const endTime = Date.now();
+            const reactionTime = endTime - startTime;
+            reactionTimes.push(reactionTime);
+            
+            // Update display
+            box.className = "clicked";
+            box.textContent = `${reactionTime} ms`;
+            
+            updateResults();
+            
+            // Reset for next trial or finish
+            setTimeout(() => {
+                box.className = "";
+                isRunning = false;
+                
+                if (reactionTimes.length < maxTrials) {
+                    box.textContent = "Click for next trial";
+                } else {
+                    box.textContent = "Complete";
+                }
+            }, 1500);
+        });
+        
+        // Reset button handler
+        resetButton.addEventListener('click', function() {
+            reactionTimes = [];
+            updateResults();
+            
+            if (!isRunning) {
+                box.className = "";
+                box.textContent = "Click to start";
+            }
+        });
+        
+        // Update results display
+        function updateResults() {
+            // Update trial counter
+            trialCounterElement.textContent = `Trial ${reactionTimes.length}/${maxTrials}`;
+            
+            // Reset visibility of all trial elements
+            trialElements.forEach(el => el.classList.remove('visible'));
+            
+            if (reactionTimes.length === 0) {
+                averageContainer.style.display = "none";
+                return;
+            }
+            
+            // Update visible trials
+            for (let i = 0; i < reactionTimes.length; i++) {
+                trialElements[i].textContent = `Trial ${i + 1}: ${reactionTimes[i]} ms`;
+                trialElements[i].classList.add('visible');
+            }
+            
+            // Hide average if less than 2 trials
+            if (reactionTimes.length < 2) {
+                averageContainer.style.display = "none";
+            } else {
+                // Calculate and display average for 2 or more trials
+                averageContainer.style.display = "block";
+                const total = reactionTimes.reduce((sum, time) => sum + time, 0);
+                const average = Math.round(total / reactionTimes.length);
+                averageElement.textContent = `${average} ms`;
+            }
+        }
+    </script>
+</body>
+</html>
